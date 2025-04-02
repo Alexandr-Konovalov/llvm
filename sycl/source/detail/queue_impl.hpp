@@ -1051,11 +1051,11 @@ protected:
         }
       }
     }
-    template <typename F> DataType read(F &&func) {
+    DataType read() {
       if (!MIsSet.load(std::memory_order_acquire))
         return DataType{};
       std::lock_guard<std::mutex> Lock(MDataMtx);
-      return func(MData);
+      return MData;
     }
   };
 

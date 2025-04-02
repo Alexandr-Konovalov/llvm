@@ -286,10 +286,7 @@ event queue_impl::memcpyFromDeviceGlobal(
 sycl::detail::optional<event> queue_impl::getLastEvent() {
   // The external event is required to finish last if set, so it is considered
   // the last event if present.
-  if (std::optional<event> ExternalEvent = MInOrderExternalEvent.read(
-          [](std::optional<event> &InOrderExternalEvent) {
-            return InOrderExternalEvent;
-          }))
+  if (std::optional<event> ExternalEvent = MInOrderExternalEvent.read())
     return ExternalEvent;
 
   std::lock_guard<std::mutex> Lock{MMutex};
