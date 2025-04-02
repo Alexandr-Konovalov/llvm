@@ -1030,7 +1030,8 @@ protected:
     }
   } MDefaultGraphDeps, MExtGraphDeps;
 
-  // implement check-lock-check pattern to not lock empty MData
+  // Implement check-lock-check pattern to not lock empty MData as the locks
+  // come with runtime overhead.
   template <typename DataType> class CheckLockCheck {
     DataType MData;
     std::atomic_bool MIsSet = false;
