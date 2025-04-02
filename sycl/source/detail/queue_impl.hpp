@@ -1040,13 +1040,13 @@ protected:
     template <typename F> void set(F &&func) {
       std::lock_guard<std::mutex> Lock(MDataMtx);
       MIsSet.store(true, std::memory_order_release);
-      func(MData);
+      std::forward<F>(func)(MData);
     }
     template <typename F> void unset(F &&func) {
       if (MIsSet.load(std::memory_order_acquire)) {
         std::lock_guard<std::mutex> Lock(MDataMtx);
         if (MIsSet.load(std::memory_order_acquire)) {
-          func(MData);
+          std::forward<F>(func)(MData);
           MIsSet.store(false, std::memory_order_release);
         }
       }
