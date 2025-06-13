@@ -16,14 +16,32 @@ namespace sycl {
 inline namespace _V1 {
 namespace detail {
 
+kernel_impl::kernel_impl(ur_kernel_handle_t Kernel, ContextImplPtr Context)
+    : MKernel(Kernel), MContext(Context),
+      MProgram(ProgramManager::getInstance().getUrProgramFromUrKernel(Kernel,
+                                                                      Context)),
+      MCreatedFromSource(true), MIsInterop(true) {
+  ur_context_handle_t UrContext = nullptr;
+  // Using the adapter from the passed ContextImpl
+  getAdapter()->call<UrApiKind::urKernelGetInfo>(
+      MKernel, UR_KERNEL_INFO_CONTEXT, sizeof(UrContext), &UrContext, nullptr);
+  if (Context->getHandleRef() != UrContext)
+    throw sycl::exception(
+        make_error_code(errc::invalid),
+        "Input context must be the same as the context of cl_kernel");
+
+  // Enable USM indirect access for interoperability kernels.
+  enableUSMIndirectAccess();
+}
 kernel_impl::kernel_impl(ur_kernel_handle_t Kernel, ContextImplPtr Context,
-                         KernelBundleImplPtr KernelBundleImpl,
+                         kernel_bundle_impl &KernelBundleImpl,
                          const KernelArgMask *ArgMask)
     : MKernel(Kernel), MContext(Context),
       MProgram(ProgramManager::getInstance().getUrProgramFromUrKernel(Kernel,
                                                                       Context)),
-      MCreatedFromSource(true), MKernelBundleImpl(std::move(KernelBundleImpl)),
-      MIsInterop(true), MKernelArgMaskPtr{ArgMask} {
+      MCreatedFromSource(true),
+      MKernelBundleImpl(KernelBundleImpl.shared_from_this()), MIsInterop(true),
+      MKernelArgMaskPtr{ArgMask} {
   ur_context_handle_t UrContext = nullptr;
   // Using the adapter from the passed ContextImpl
   getAdapter()->call<UrApiKind::urKernelGetInfo>(
@@ -39,13 +57,13 @@ kernel_impl::kernel_impl(ur_kernel_handle_t Kernel, ContextImplPtr Context,
 
 kernel_impl::kernel_impl(ur_kernel_handle_t Kernel, ContextImplPtr ContextImpl,
                          DeviceImageImplPtr DeviceImageImpl,
-                         KernelBundleImplPtr &&KernelBundleImpl,
+                         kernel_bundle_impl &KernelBundleImpl,
                          const KernelArgMask *ArgMask,
                          ur_program_handle_t Program, std::mutex *CacheMutex)
     : MKernel(Kernel), MContext(std::move(ContextImpl)), MProgram(Program),
       MCreatedFromSource(DeviceImageImpl->isNonSYCLSourceBased()),
       MDeviceImageImpl(std::move(DeviceImageImpl)),
-      MKernelBundleImpl(std::move(KernelBundleImpl)),
+      MKernelBundleImpl(KernelBundleImpl.shared_from_this()),
       MIsInterop(MDeviceImageImpl->getOriginMask() & ImageOriginInterop),
       MKernelArgMaskPtr{ArgMask}, MCacheMutex{CacheMutex} {
   // Enable USM indirect access for interop and non-sycl-jit source kernels.

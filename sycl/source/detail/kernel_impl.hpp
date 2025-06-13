@@ -32,6 +32,12 @@ using ContextImplPtr = std::shared_ptr<context_impl>;
 using KernelBundleImplPtr = std::shared_ptr<kernel_bundle_impl>;
 class kernel_impl {
 public:
+  // This is used by
+  //
+  //   > `kernel::kernel(cl_kernel ClKernel, const context &SyclContext)`
+  //
+  // and is the only one where we don't have a `kernel_bundle_impl` set.
+  kernel_impl(ur_kernel_handle_t Kernel, ContextImplPtr Context);
   /// Constructs a SYCL kernel instance from a UrKernel
   ///
   /// This constructor is used for UR adapter interoperability. It always marks
@@ -41,7 +47,7 @@ public:
   /// \param Context is a valid SYCL context
   /// \param KernelBundleImpl is a valid instance of kernel_bundle_impl
   kernel_impl(ur_kernel_handle_t Kernel, ContextImplPtr Context,
-              KernelBundleImplPtr KernelBundleImpl,
+              kernel_bundle_impl &KernelBundleImpl,
               const KernelArgMask *ArgMask = nullptr);
 
   /// Constructs a SYCL kernel_impl instance from a SYCL device_image,
@@ -52,7 +58,7 @@ public:
   /// \param KernelBundleImpl is a valid instance of kernel_bundle_impl
   kernel_impl(ur_kernel_handle_t Kernel, ContextImplPtr ContextImpl,
               DeviceImageImplPtr DeviceImageImpl,
-              KernelBundleImplPtr &&KernelBundleImpl,
+              kernel_bundle_impl &KernelBundleImpl,
               const KernelArgMask *ArgMask, ur_program_handle_t Program,
               std::mutex *CacheMutex);
 
@@ -252,7 +258,7 @@ private:
   const KernelBundleImplPtr MKernelBundleImpl;
   bool MIsInterop = false;
   mutable std::mutex MNoncacheableEnqueueMutex;
-  const KernelArgMask *MKernelArgMaskPtr;
+  const KernelArgMask *MKernelArgMaskPtr = nullptr;
   std::mutex *MCacheMutex = nullptr;
   mutable std::string MName;
 
