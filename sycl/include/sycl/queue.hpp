@@ -32,6 +32,7 @@
 #include <sycl/ext/oneapi/device_global/properties.hpp> // for device_image_s...
 #include <sycl/ext/oneapi/experimental/event_mode_property.hpp>
 #include <sycl/ext/oneapi/experimental/graph.hpp>    // for command_graph...
+#include <sycl/ext/oneapi/experimental/rangesref.hpp> // for RangesRefT
 #include <sycl/ext/oneapi/properties/properties.hpp> // for empty_properti...
 #include <sycl/handler.hpp>                          // for handler, isDev...
 #include <sycl/id.hpp>                               // for id
@@ -232,7 +233,7 @@ event submit_with_event_impl(const queue &Q, PropertiesT Props,
 template <typename KernelName, typename PropertiesT,
           typename KernelType, int Dims>
 void submit_direct_impl(const queue &Q, PropertiesT Props,
-                        nd_range<Dims> Range,
+                        const sycl::ext::oneapi::experimental::RangesRefT &ndr,
                         const KernelType &KernelFunc,
                         const sycl::detail::code_location &CodeLoc);
 
@@ -3701,7 +3702,8 @@ private:
   template <typename KernelName, typename PropertiesT,
             typename KernelType, int Dims>
   friend void ext::oneapi::experimental::detail::submit_direct_impl(
-      const queue &Q, PropertiesT Props, nd_range<Dims> Range,
+      const queue &Q, PropertiesT Props,
+      const sycl::ext::oneapi::experimental::RangesRefT &ndr,
       const KernelType &KernelFunc,
       const sycl::detail::code_location &CodeLoc);
 
@@ -3861,7 +3863,7 @@ private:
       const detail::code_location &CodeLoc, bool IsTopCodeLoc) const;
 
   void submit_direct_without_event_impl(
-      nd_range<3> Range,
+      const sycl::ext::oneapi::experimental::RangesRefT &ndr,
       const detail::v1::SubmissionInfo &SubmitInfo,
       const detail::v1::KernelRuntimeInfo &KRInfo,
       const detail::code_location &CodeLoc, bool IsTopCodeLoc) const;
@@ -4014,7 +4016,8 @@ private:
 
   template <typename KernelName = detail::auto_name, bool UseFallbackAssert,
             typename PropertiesT, typename KernelType, int Dims>
-  void submit_direct_without_event(PropertiesT Props, nd_range<Dims> Range,
+  void submit_direct_without_event(PropertiesT Props,
+                          const sycl::ext::oneapi::experimental::RangesRefT &ndr,
                           const KernelType &KernelFunc,
                           const detail::code_location &CodeLoc =
                               detail::code_location::current()) const {
@@ -4034,7 +4037,7 @@ private:
 
     // TODO UseFallbackAssert
 
-    submit_direct_without_event_impl(Range, SI, KRInfo,
+    submit_direct_without_event_impl(ndr, SI, KRInfo,
       TlsCodeLocCapture.query(), TlsCodeLocCapture.isToplevel());
   }
 #endif //__DPCPP_ENABLE_UNFINISHED_NO_CGH_SUBMIT

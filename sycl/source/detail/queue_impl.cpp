@@ -439,7 +439,7 @@ std::vector<ArgDesc> queue_impl::extractArgsAndReqsFromLambda(
 }
 
 detail::EventImplPtr
-queue_impl::submit_direct_impl(const NDRDescT &NDRDesc,
+queue_impl::submit_direct_impl(const sycl::ext::oneapi::experimental::RangesRefT &ndr,
             const v1::SubmissionInfo &SubmitInfo,
             const v1::KernelRuntimeInfo &KRInfo,
             bool CallerNeedsEvent,
@@ -451,6 +451,16 @@ queue_impl::submit_direct_impl(const NDRDescT &NDRDesc,
   std::vector<detail::ArgDesc> Args;
   std::vector<std::shared_ptr<detail::stream_impl>> StreamStorage;
   std::vector<std::shared_ptr<const void>> AuxiliaryResources;
+
+  NDRDescT NDRDesc;
+  
+  NDRDesc.Dims = ndr.Dims;
+  for (int i = 0; i < 3; ++i) {
+    NDRDesc.GlobalSize[i] = ndr.GlobalSize[i];
+    NDRDesc.LocalSize[i] = ndr.LocalSize[i];
+//    NDRDesc.GlobalOffset[i] = ndr.getGlobalOffset()[i];
+//    NDRDesc.NumWorkGroups[i] = ndr.getNumWorkGroups()[i];
+  }
 
   std::unique_lock<std::mutex> Lock(MMutex);
 

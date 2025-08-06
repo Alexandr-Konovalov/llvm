@@ -115,11 +115,11 @@ event submit_with_event_impl(const queue &Q, PropertiesT Props,
 template <typename KernelName, typename PropertiesT,
           typename KernelType, int Dims>
 void submit_direct_impl(const queue &Q, PropertiesT Props,
-                        nd_range<Dims> Range,
+                        const sycl::ext::oneapi::experimental::RangesRefT &ndr,
                         const KernelType &KernelFunc,
                         const sycl::detail::code_location &CodeLoc) {
   Q.submit_direct_without_event<KernelName, __SYCL_USE_FALLBACK_ASSERT, PropertiesT,
-    KernelType, Dims>(Props, Range, KernelFunc, CodeLoc);
+    KernelType, Dims>(Props, ndr, KernelFunc, CodeLoc);
 }
 template <typename KernelName, typename PropertiesT,
           typename KernelType, int Dims>
@@ -152,12 +152,12 @@ void submit(const queue &Q, CommandGroupFunc &&CGF,
 template <typename KernelName = sycl::detail::auto_name, typename PropertiesT,
           typename KernelType, int Dims>
 void submit(const queue &Q, PropertiesT Props,
-            nd_range<Dims> Range,
+            const sycl::ext::oneapi::experimental::RangesRefT &ndr,
             const KernelType &KernelFunc,
             const sycl::detail::code_location &CodeLoc =
               sycl::detail::code_location::current()) {
   sycl::ext::oneapi::experimental::detail::submit_direct_impl
-    <KernelName, PropertiesT, KernelType, Dims>(Q, Props, Range, KernelFunc, CodeLoc);
+    <KernelName, PropertiesT, KernelType, Dims>(Q, Props, ndr, KernelFunc, CodeLoc);
 }
 #endif //__DPCPP_ENABLE_UNFINISHED_NO_CGH_SUBMIT
 
@@ -309,7 +309,9 @@ template <typename KernelName = sycl::detail::auto_name, int Dimensions,
 void nd_launch(queue Q, nd_range<Dimensions> Range, const KernelType &KernelObj,
                ReductionsT &&...Reductions) {
   if constexpr (sizeof...(ReductionsT) == 0) {
-    submit<KernelName>(std::move(Q), empty_properties_t{}, Range, KernelObj);
+    sycl::ext::oneapi::experimental::RangesRefT ndr{Range};
+    submit<KernelName, empty_properties_t, KernelType, Dimensions>(
+      std::move(Q), empty_properties_t{}, ndr, KernelObj);
   } else {
     submit(std::move(Q), [&](handler &CGH) {
       nd_launch<KernelName>(CGH, Range, KernelObj,

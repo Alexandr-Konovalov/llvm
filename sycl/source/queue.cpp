@@ -359,11 +359,11 @@ void queue::submit_direct_without_event_impl(
 }
 
 void queue::submit_direct_without_event_impl(
-    nd_range<3> Range,
+    const sycl::ext::oneapi::experimental::RangesRefT &ndr,
     const detail::v1::SubmissionInfo &SubmitInfo,
     const detail::v1::KernelRuntimeInfo &KRInfo,
     const detail::code_location &CodeLoc, bool IsTopCodeLoc) const {
-  impl->submit_direct_without_event(Range, SubmitInfo, KRInfo,
+  impl->submit_direct_without_event(ndr, SubmitInfo, KRInfo,
       CodeLoc, IsTopCodeLoc);
 }
 
