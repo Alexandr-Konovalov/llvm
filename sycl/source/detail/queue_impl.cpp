@@ -438,8 +438,28 @@ std::vector<ArgDesc> queue_impl::extractArgsAndReqsFromLambda(
   return Args;
 }
 
+sycl::detail::NDRDescT ranges_ref_view::toNDRDescT() const {
+  NDRDescT NDRDesc;
+
+  NDRDesc.Dims = Dims;
+  for (size_t i = 0; i < Dims; ++i) {
+    NDRDesc.GlobalSize[i] = GlobalSize[i];
+  }
+  if (LocalSize)
+    for (size_t i = 0; i < Dims; ++i) {
+      NDRDesc.LocalSize[i] = LocalSize[i];
+    }
+  if (GlobalOffset)
+    for (size_t i = 0; i < Dims; ++i) {
+      NDRDesc.GlobalOffset[i] = GlobalOffset[i];
+    }
+  return NDRDesc;
+}
+
+
 detail::EventImplPtr queue_impl::submit_direct_impl(
-    const NDRDescT &NDRDesc, const v1::SubmissionInfo &SubmitInfo,
+    const sycl::detail::ranges_ref_view &ndr,
+    const v1::SubmissionInfo &SubmitInfo,
     const v1::KernelRuntimeInfo &KRInfo, bool CallerNeedsEvent,
     const detail::code_location &CodeLoc, bool IsTopCodeLoc) {
   (void)SubmitInfo;
@@ -449,6 +469,8 @@ detail::EventImplPtr queue_impl::submit_direct_impl(
   std::vector<detail::ArgDesc> Args;
   std::vector<std::shared_ptr<detail::stream_impl>> StreamStorage;
   std::vector<std::shared_ptr<const void>> AuxiliaryResources;
+
+  NDRDescT NDRDesc = ndr.toNDRDescT();
 
   std::unique_lock<std::mutex> Lock(MMutex);
 

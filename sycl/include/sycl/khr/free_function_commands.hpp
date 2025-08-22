@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sycl/ext/oneapi/experimental/enqueue_functions.hpp>
+#include <sycl/detail/ranges_ref_view.hpp>
 
 namespace sycl {
 inline namespace _V1 {
@@ -154,8 +155,10 @@ void launch_grouped(const queue &q, range<1> r, range<1> size,
                     const sycl::detail::code_location &codeLoc =
                         sycl::detail::code_location::current()) {
 #ifdef __DPCPP_ENABLE_UNFINISHED_NO_CGH_SUBMIT
-  submit(std::move(q), ext::oneapi::experimental::empty_properties_t{},
-         nd_range<1>(r, size), k);
+  sycl::detail::ranges_ref_view ndr{r, size};
+  submit<sycl::detail::auto_name, ext::oneapi::experimental::empty_properties_t,
+         KernelType, 1>(std::move(q), ext::oneapi::experimental::empty_properties_t{},
+         ndr, k);
 #else
   submit(
       q, [&](handler &h) { launch_grouped<KernelType>(h, r, size, k); },
@@ -168,8 +171,10 @@ void launch_grouped(const queue &q, range<2> r, range<2> size,
                     const sycl::detail::code_location &codeLoc =
                         sycl::detail::code_location::current()) {
 #ifdef __DPCPP_ENABLE_UNFINISHED_NO_CGH_SUBMIT
-  submit(std::move(q), ext::oneapi::experimental::empty_properties_t{},
-         nd_range<2>(r, size), k);
+  sycl::detail::ranges_ref_view ndr{r, size};
+  submit<sycl::detail::auto_name, ext::oneapi::experimental::empty_properties_t,
+         KernelType, 2>(std::move(q), ext::oneapi::experimental::empty_properties_t{},
+         ndr, k);
 #else
   submit(
       q, [&](handler &h) { launch_grouped<KernelType>(h, r, size, k); },
@@ -182,8 +187,10 @@ void launch_grouped(const queue &q, range<3> r, range<3> size,
                     const sycl::detail::code_location &codeLoc =
                         sycl::detail::code_location::current()) {
 #ifdef __DPCPP_ENABLE_UNFINISHED_NO_CGH_SUBMIT
-  submit(std::move(q), ext::oneapi::experimental::empty_properties_t{},
-         nd_range<3>(r, size), k);
+  sycl::detail::ranges_ref_view ndr{r, size};
+  submit<sycl::detail::auto_name, ext::oneapi::experimental::empty_properties_t,
+         KernelType, 3>(std::move(q), ext::oneapi::experimental::empty_properties_t{},
+         ndr, k);
 #else
   submit(
       q, [&](handler &h) { launch_grouped<KernelType>(h, r, size, k); },
