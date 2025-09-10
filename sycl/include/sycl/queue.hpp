@@ -151,6 +151,17 @@ private:
       ext::oneapi::experimental::event_mode_enum::none;
 };
 
+template<typename KernelType, typename TransformedArgType, int Dims>
+std::shared_ptr<detail::HostKernelBase> CopyHostKernel(const void *KernelFunc) {
+  const KernelType &KernelFuncRef = *static_cast<const KernelType*>(KernelFunc);
+  std::shared_ptr<detail::HostKernelBase> HostKernel;
+  HostKernel.reset(new detail::HostKernel<KernelType, TransformedArgType, Dims>(
+        KernelFuncRef));
+  return HostKernel;
+}
+
+using HostKernelFactory = std::shared_ptr<detail::HostKernelBase>(*)(const void*);
+
 using KernelParamDescGetterFuncPtr = detail::kernel_param_desc_t (*)(int);
 
 // This class is intended to store the kernel runtime information,
@@ -172,14 +183,6 @@ public:
     return MKernelName;
   }
 
-  std::shared_ptr<detail::HostKernelBase> &HostKernel() { return MHostKernel; }
-  const std::shared_ptr<detail::HostKernelBase> &HostKernel() const {
-    return MHostKernel;
-  }
-
-  char *GetKernelFuncPtr() { return (*MHostKernel).getPtr(); }
-  char *GetKernelFuncPtr() const { return (*MHostKernel).getPtr(); }
-
   detail::DeviceKernelInfo *&DeviceKernelInfoPtr() {
     return MDeviceKernelInfoPtr;
   }
@@ -187,9 +190,23 @@ public:
     return MDeviceKernelInfoPtr;
   }
 
+  void SaveHostKernelRef(const void *KernelFuncPtr, HostKernelFactory Factory) {
+    MHostKernelFactory = Factory;
+    MHostKernelPtr = KernelFuncPtr;
+  }
+
+  std::shared_ptr<detail::HostKernelBase> CopyHostKernel() const {
+    if (MHostKernelFactory && MHostKernelPtr)
+      return MHostKernelFactory(MHostKernelPtr);
+    return nullptr;
+  }
+
 private:
   detail::ABINeutralKernelNameStrT MKernelName;
-  std::shared_ptr<detail::HostKernelBase> MHostKernel;
+  HostKernelFactory MHostKernelFactory = nullptr;
+  // points to the kernel function object allocated on stack, it's a lambda
+  // function, so have to use void* here
+  const void *MHostKernelPtr = nullptr;
   detail::DeviceKernelInfo *MDeviceKernelInfoPtr = nullptr;
 };
 
@@ -3719,9 +3736,8 @@ private:
             typename TransformUserItemType<Dims, LambdaArgType>::type>,
         void>;
 
-    KRInfo.HostKernel().reset(
-        new detail::HostKernel<KernelType, TransformedArgType, Dims>(
-            KernelFunc));
+    KRInfo.SaveHostKernelRef(&KernelFunc,
+        detail::v1::CopyHostKernel<KernelType, TransformedArgType, Dims>);
 
     KRInfo.KernelName() = detail::getKernelName<KernelName>();
     KRInfo.DeviceKernelInfoPtr() = &detail::getDeviceKernelInfo<KernelName>();
