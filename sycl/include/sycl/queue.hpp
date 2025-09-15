@@ -157,7 +157,7 @@ using KernelParamDescGetterFuncPtr = detail::kernel_param_desc_t (*)(int);
 // extracted from the compile time kernel structures.
 class __SYCL_EXPORT KernelRuntimeInfo {
 public:
-  KernelRuntimeInfo() {}
+  KernelRuntimeInfo(const detail::HostKernelBase &HostKernel) : MHostKernel(HostKernel) {}
 
   KernelRuntimeInfo(const KernelRuntimeInfo &rhs) = delete;
 
@@ -172,13 +172,11 @@ public:
     return MKernelName;
   }
 
-  std::shared_ptr<detail::HostKernelBase> &HostKernel() { return MHostKernel; }
-  const std::shared_ptr<detail::HostKernelBase> &HostKernel() const {
+  const detail::HostKernelBase &HostKernel() const {
     return MHostKernel;
   }
 
-  char *GetKernelFuncPtr() { return (*MHostKernel).getPtr(); }
-  char *GetKernelFuncPtr() const { return (*MHostKernel).getPtr(); }
+  char *GetKernelFuncPtr() const { return MHostKernel.getPtr(); }
 
   detail::DeviceKernelInfo *&DeviceKernelInfoPtr() {
     return MDeviceKernelInfoPtr;
@@ -189,7 +187,7 @@ public:
 
 private:
   detail::ABINeutralKernelNameStrT MKernelName;
-  std::shared_ptr<detail::HostKernelBase> MHostKernel;
+  const detail::HostKernelBase &MHostKernel;
   detail::DeviceKernelInfo *MDeviceKernelInfoPtr = nullptr;
 };
 
@@ -3707,23 +3705,8 @@ private:
                            item<Dims>, LambdaArgType>>;
   };
 
-  template <typename KernelName, typename KernelType, int Dims,
-            detail::WrapAs WrapAsVal>
-  void ProcessKernelRuntimeInfo(const KernelType &KernelFunc,
-                                detail::v1::KernelRuntimeInfo &KRInfo) const {
-
-    using LambdaArgType = sycl::detail::lambda_arg_type<KernelType, item<Dims>>;
-    using TransformedArgType = std::conditional_t<
-        WrapAsVal == detail::WrapAs::parallel_for,
-        std::conditional_t<
-            std::is_integral<LambdaArgType>::value && Dims == 1, item<Dims>,
-            typename TransformUserItemType<Dims, LambdaArgType>::type>,
-        void>;
-
-    KRInfo.HostKernel().reset(
-        new detail::HostKernel<KernelType, TransformedArgType, Dims>(
-            KernelFunc));
-
+  template <typename KernelName>
+  void ProcessKernelRuntimeInfo(detail::v1::KernelRuntimeInfo &KRInfo) const {
     KRInfo.KernelName() = detail::getKernelName<KernelName>();
     KRInfo.DeviceKernelInfoPtr() = &detail::getDeviceKernelInfo<KernelName>();
   }
@@ -3875,13 +3858,20 @@ private:
                                       detail::code_location::current()) const {
     (void)Props;
     detail::tls_code_loc_t TlsCodeLocCapture(CodeLoc);
-    detail::v1::KernelRuntimeInfo KRInfo{};
+    using LambdaArgType = sycl::detail::lambda_arg_type<KernelType, item<Dims>>;
+    using TransformedArgType = std::conditional_t<
+        WrapAsVal == detail::WrapAs::parallel_for,
+        std::conditional_t<
+            std::is_integral<LambdaArgType>::value && Dims == 1, item<Dims>,
+            typename TransformUserItemType<Dims, LambdaArgType>::type>,
+        void>;
+    detail::HostKernelRef<KernelType, TransformedArgType, Dims> HostKernelRef(KernelFunc);
+    detail::v1::KernelRuntimeInfo KRInfo{HostKernelRef};
 
     using NameT =
         typename detail::get_kernel_name_t<KernelName, KernelType>::name;
 
-    ProcessKernelRuntimeInfo<NameT, KernelType, Dims, WrapAsVal>(KernelFunc,
-                                                                 KRInfo);
+    ProcessKernelRuntimeInfo<NameT>(KRInfo);
 
     detail::KernelWrapper<WrapAsVal, NameT, KernelType, ElementType,
                           PropertiesT>::wrap(KernelFunc);
@@ -3899,13 +3889,18 @@ private:
           detail::code_location::current()) const {
     (void)Props;
     detail::tls_code_loc_t TlsCodeLocCapture(CodeLoc);
-    detail::v1::KernelRuntimeInfo KRInfo{};
+    using LambdaArgType = sycl::detail::lambda_arg_type<KernelType, item<Dims>>;
+    using TransformedArgType = std::conditional_t<
+            std::is_integral<LambdaArgType>::value && Dims == 1, item<Dims>,
+            typename TransformUserItemType<Dims, LambdaArgType>::type>;
+    detail::HostKernelRef<KernelType, TransformedArgType, Dims>
+        HostKernelRef(KernelFunc);
+    detail::v1::KernelRuntimeInfo KRInfo{HostKernelRef};
 
     using NameT =
         typename detail::get_kernel_name_t<KernelName, KernelType>::name;
 
-    ProcessKernelRuntimeInfo<NameT, KernelType, Dims,
-                             detail::WrapAs::parallel_for>(KernelFunc, KRInfo);
+    ProcessKernelRuntimeInfo<NameT>(KRInfo);
 
     detail::KernelWrapper<detail::WrapAs::parallel_for, NameT, KernelType,
                           sycl::nd_item<Dims>, PropertiesT>::wrap(KernelFunc);
